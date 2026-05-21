@@ -3,6 +3,7 @@ import { getProgressLogs, saveProgressLog, updateLearningEntry, uploadVideo } fr
 import PhaseIndicator from '../shared/PhaseIndicator'
 import MediaUpload from '../shared/MediaUpload'
 import YouTubeEmbed from '../shared/YouTubeEmbed'
+import toast from 'react-hot-toast'
 
 function today() {
   return new Date().toISOString().slice(0, 10)
@@ -65,7 +66,9 @@ export default function ProgressPhase({ entry, type, onSaved, onMarkComplete, on
       })
       setNotes('')
       setPhotoUrls([])
+      setVideoUrl('')
       await fetchLogs()
+      toast.success('Session logged')
       onSaved()
     } catch (err) {
       setError(err.message)

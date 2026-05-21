@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { aiPlan, createLearningEntry, updateLearningEntry } from '../../api/index'
 import PhaseIndicator from '../shared/PhaseIndicator'
+import toast from 'react-hot-toast'
 
 export default function PlanPhase({ topic, type, onSaved, onBack }) {
   const [step, setStep] = useState('question') // 'question' | 'loading' | 'plan' | 'split' | 'saving'
@@ -42,6 +43,7 @@ export default function PlanPhase({ topic, type, onSaved, onBack }) {
       })
       // Move to progress status
       const updated = await updateLearningEntry(entry.id, { status: 'progress' })
+      toast.success('Mission started')
       onSaved(updated)
     } catch (err) {
       setError(err.message)

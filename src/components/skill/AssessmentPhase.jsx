@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { aiAssess, aiInsight, updateLearningEntry, getProgressLogs } from '../../api/index'
 import PhaseIndicator from '../shared/PhaseIndicator'
+import toast from 'react-hot-toast'
 
 export default function AssessmentPhase({ entry, type, onComplete, onBack }) {
   const [step, setStep] = useState('loading') // loading | question | answering | scoring | followup | result | saving
@@ -99,6 +100,7 @@ export default function AssessmentPhase({ entry, type, onComplete, onBack }) {
         completed_at: new Date().toISOString(),
       })
 
+      toast.success(needsReview ? 'Card saved — marked for review' : 'Mission complete ✓')
       onComplete({ ...entry, assessment_score: score, needs_review: needsReview, core_insight: insightResult.insight })
     } catch (err) {
       setError(err.message)

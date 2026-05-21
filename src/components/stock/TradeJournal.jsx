@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { saveTrade } from '../../api/index'
 import MediaUpload from '../shared/MediaUpload'
+import toast from 'react-hot-toast'
 
 const SYMBOLS = ['XAUUSD', 'NEPSE Stock', 'Other']
 const EMOTIONS = ['calm', 'anxious', 'fomo', 'confident', 'revenge']
@@ -50,6 +51,7 @@ export default function TradeJournal({ onSaved, onBack }) {
         emotion: form.emotion || null,
         screenshot_url: form.screenshot_url || null,
       })
+      toast.success('Trade saved')
       onSaved()
     } catch (err) {
       setError(err.message)

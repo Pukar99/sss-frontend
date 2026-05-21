@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { saveResearch } from '../../api/index'
 import MediaUpload from '../shared/MediaUpload'
+import toast from 'react-hot-toast'
 
 const TYPES = [
   { v: 'strategy', label: 'Strategy' },
@@ -42,8 +43,9 @@ export default function ResearchEntry({ onSaved, onBack }) {
         what_i_did: form.what_i_did || null,
         finding: form.finding || null,
         confidence: form.confidence || null,
-        image_url: null,
+        image_url: form.image_url || null,
       })
+      toast.success('Research saved')
       onSaved()
     } catch (err) {
       setError(err.message)
