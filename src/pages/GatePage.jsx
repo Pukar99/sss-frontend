@@ -23,26 +23,34 @@ export default function GatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="text-base font-semibold text-white mb-1">SSS</h1>
-        <p className="text-xs text-gray-500 mb-8">Study · Skill · Stock</p>
+    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center px-6">
+      <div className="w-full max-w-xs">
 
+        {/* Logo area */}
+        <div className="mb-12 text-center">
+          <div className="flex items-center justify-center gap-1.5 mb-3">
+            <div className="w-2 h-2 rounded-full bg-amber-400" />
+            <div className="w-2 h-2 rounded-full bg-blue-400" />
+            <div className="w-2 h-2 rounded-full bg-purple-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">SSS</h1>
+          <p className="text-xs text-gray-500 mt-1 tracking-widest uppercase">Study · Skill · Stock</p>
+        </div>
+
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
             type="text"
             value={name}
             onChange={(e) => { setName(e.target.value); setError('') }}
-            placeholder="Enter your name"
+            placeholder="Your name"
             autoFocus
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gray-500"
+            className="w-full bg-gray-800 border border-gray-700 rounded-2xl px-4 py-3.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-600 text-center"
           />
-          {error && (
-            <p className="text-xs text-red-400">{error}</p>
-          )}
+          {error && <p className="text-xs text-red-400 text-center">{error}</p>}
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium"
+            className="w-full bg-white hover:bg-gray-100 text-gray-900 px-4 py-3 rounded-2xl text-sm font-semibold transition-colors"
           >
             Enter
           </button>
