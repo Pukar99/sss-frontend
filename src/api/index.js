@@ -17,6 +17,7 @@ async function request(method, path, body) {
 export const saveTrade = (data) => request('POST', '/api/stock/trade', data)
 export const saveResearch = (data) => request('POST', '/api/stock/research', data)
 export const getStockEntries = (date) => request('GET', `/api/stock/${date}`)
+export const getRecentStockEntries = (days = 30) => request('GET', `/api/stock/recent?days=${days}`)
 
 // Learning
 export const createLearningEntry = (data) => request('POST', '/api/learning', data)
