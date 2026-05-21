@@ -1,12 +1,17 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { getProgressLogs, saveProgressLog, updateLearningEntry, uploadVideo } from '../../api/index'
-import PhaseIndicator from '../shared/PhaseIndicator'
 import MediaUpload from '../shared/MediaUpload'
 import YouTubeEmbed from '../shared/YouTubeEmbed'
 import toast from 'react-hot-toast'
 
-function today() {
-  return new Date().toISOString().slice(0, 10)
+function today() { return new Date().toISOString().slice(0, 10) }
+
+function CheckIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+      <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
 }
 
 export default function ProgressPhase({ entry, type, onSaved, onMarkComplete, onBack }) {
@@ -20,9 +25,14 @@ export default function ProgressPhase({ entry, type, onSaved, onMarkComplete, on
   const [error, setError] = useState('')
   const [expandedLog, setExpandedLog] = useState(null)
   const [confirmComplete, setConfirmComplete] = useState(false)
+  const [activeSection, setActiveSection] = useState('plan') // 'plan' | 'log'
 
-  const accent = type === 'skill' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-purple-600 hover:bg-purple-500'
-  const color = type === 'skill' ? 'text-blue-400' : 'text-purple-400'
+  const isSkill = type === 'skill'
+  const accent = isSkill ? 'bg-blue-600 hover:bg-blue-500' : 'bg-purple-600 hover:bg-purple-500'
+  const accentText = isSkill ? 'text-blue-400' : 'text-purple-400'
+  const accentFill = isSkill ? 'bg-blue-500' : 'bg-purple-500'
+  const accentBorder = isSkill ? 'border-blue-500/30' : 'border-purple-500/30'
+  const accentBg = isSkill ? 'bg-blue-500/5' : 'bg-purple-500/5'
 
   const steps = useMemo(() => entry.plan_steps || [], [entry.plan_steps])
   const [checkedSteps, setCheckedSteps] = useState(() =>
@@ -30,254 +40,277 @@ export default function ProgressPhase({ entry, type, onSaved, onMarkComplete, on
   )
 
   const fetchLogs = useCallback(async () => {
-    try {
-      const data = await getProgressLogs(entry.id)
-      setLogs(data)
-    } catch (_) {
-      setLogs([])
-    }
+    try { setLogs(await getProgressLogs(entry.id)) }
+    catch (_) { setLogs([]) }
   }, [entry.id])
 
   useEffect(() => { fetchLogs() }, [fetchLogs])
 
   function toggleStep(i) {
-    setCheckedSteps(prev => {
-      const next = [...prev]
-      next[i] = !next[i]
-      return next
-    })
+    setCheckedSteps(prev => { const n = [...prev]; n[i] = !n[i]; return n })
   }
 
   async function handleLogToday() {
     if (!notes.trim()) return
-    setSaving(true)
-    setError('')
+    setSaving(true); setError('')
     try {
-      // Save updated steps to entry
       const updatedSteps = steps.map((s, i) => ({ ...s, done: checkedSteps[i] }))
       await updateLearningEntry(entry.id, { plan_steps: updatedSteps })
-
-      await saveProgressLog({
-        entry_id: entry.id,
-        date: today(),
-        notes: notes.trim(),
-        photo_urls: photoUrls,
-        video_url: videoUrl || null,
-      })
-      setNotes('')
-      setPhotoUrls([])
-      setVideoUrl('')
+      await saveProgressLog({ entry_id: entry.id, date: today(), notes: notes.trim(), photo_urls: photoUrls, video_url: videoUrl || null })
+      setNotes(''); setPhotoUrls([]); setVideoUrl('')
       await fetchLogs()
       toast.success('Session logged')
       onSaved()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSaving(false)
-    }
+    } catch (err) { setError(err.message) }
+    finally { setSaving(false) }
   }
 
   async function handleMarkComplete() {
-    setSaving(true)
-    setError('')
+    setSaving(true); setError('')
     try {
-      // Save final step state before going to assessment
       const updatedSteps = steps.map((s, i) => ({ ...s, done: checkedSteps[i] }))
       await updateLearningEntry(entry.id, { plan_steps: updatedSteps })
       onMarkComplete({ ...entry, plan_steps: updatedSteps })
-    } catch (err) {
-      setError(err.message)
-      setSaving(false)
-    }
+    } catch (err) { setError(err.message); setSaving(false) }
   }
 
   const doneCount = checkedSteps.filter(Boolean).length
+  const pct = steps.length ? Math.round((doneCount / steps.length) * 100) : 0
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in">
+
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={onBack} className="text-gray-400 hover:text-white text-sm">
-          ← Back
-        </button>
-        <PhaseIndicator phase={2} />
+      <div className="flex items-center justify-between">
+        <button type="button" onClick={onBack} className="text-gray-600 hover:text-gray-300 text-sm">← Back</button>
+        <span className={`text-xs font-semibold uppercase tracking-widest ${accentText}`}>In Progress</span>
       </div>
 
-      <div>
-        <p className={`text-sm font-semibold ${color}`}>{entry.title}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{doneCount}/{steps.length} steps done</p>
-      </div>
-
-      {/* Progress bar */}
-      {steps.length > 0 && (
-        <div className="h-1.5 bg-gray-700 rounded-full">
-          <div
-            className="h-1.5 bg-blue-500 rounded-full transition-all"
-            style={{ width: `${steps.length ? (doneCount / steps.length) * 100 : 0}%` }}
-          />
+      {/* Mission title + progress */}
+      <div className={`${accentBg} border ${accentBorder} rounded-2xl p-4 space-y-3`}>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className={`text-base font-bold text-white leading-snug`}>{entry.title}</p>
+            <p className="text-xs text-gray-600 mt-0.5">{doneCount}/{steps.length} steps · {logs.length} session{logs.length !== 1 ? 's' : ''}</p>
+          </div>
+          <span className={`text-sm font-bold font-mono ${accentText} shrink-0`}>{pct}%</span>
         </div>
-      )}
+        {steps.length > 0 && (
+          <div className="h-1 bg-surface2 rounded-full overflow-hidden">
+            <div className={`h-1 ${accentFill} rounded-full transition-all duration-500`}
+              style={{ width: `${pct}%` }} />
+          </div>
+        )}
+      </div>
 
-      {/* Plan steps */}
-      {steps.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Steps</p>
+      {/* Section tabs */}
+      <div className="flex bg-surface border border-border rounded-2xl p-1 gap-1">
+        <button
+          onClick={() => setActiveSection('plan')}
+          className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-colors ${
+            activeSection === 'plan' ? 'bg-surface2 text-white' : 'text-gray-600 hover:text-gray-400'
+          }`}
+        >
+          Mission Plan
+        </button>
+        <button
+          onClick={() => setActiveSection('log')}
+          className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-colors ${
+            activeSection === 'log' ? 'bg-surface2 text-white' : 'text-gray-600 hover:text-gray-400'
+          }`}
+        >
+          Today's Log {logs.length > 0 && <span className="ml-1 text-gray-600">({logs.length})</span>}
+        </button>
+      </div>
+
+      {/* Plan section */}
+      {activeSection === 'plan' && (
+        <div className="space-y-4 animate-fade-in">
+          {steps.length === 0 && (
+            <p className="text-xs text-gray-700 text-center py-6">No steps in this mission.</p>
+          )}
+
           <div className="space-y-2">
             {steps.map((s, i) => (
               <button
                 key={i}
                 onClick={() => toggleStep(i)}
-                className={`w-full flex items-start gap-3 bg-gray-800 border rounded-xl px-4 py-3 text-left transition-colors ${
-                  checkedSteps[i] ? 'border-blue-500/30' : 'border-gray-700'
+                className={`w-full flex items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-all border ${
+                  checkedSteps[i]
+                    ? `bg-surface border-border opacity-60`
+                    : `bg-surface border-border hover:border-border2`
                 }`}
               >
-                <div className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
-                  checkedSteps[i] ? 'border-blue-500 bg-blue-500' : 'border-gray-600'
+                {/* Checkbox */}
+                <div className={`mt-0.5 w-5 h-5 rounded-md border-2 shrink-0 flex items-center justify-center transition-all ${
+                  checkedSteps[i]
+                    ? `${accentFill} border-transparent`
+                    : 'border-border2 bg-transparent'
                 }`}>
-                  {checkedSteps[i] && <span className="text-white text-xs">✓</span>}
+                  {checkedSteps[i] && <CheckIcon />}
                 </div>
-                <div>
-                  <p className={`text-sm ${checkedSteps[i] ? 'text-gray-500 line-through' : 'text-white'}`}>
+                <div className="min-w-0">
+                  <p className={`text-sm leading-snug transition-all ${
+                    checkedSteps[i] ? 'text-gray-600 line-through' : 'text-gray-200'
+                  }`}>
                     {s.step}
                   </p>
-                  {s.time && <p className="text-xs text-gray-500 mt-0.5">{s.time}</p>}
+                  {s.time && !checkedSteps[i] && (
+                    <span className="inline-block mt-1 text-xs text-gray-700 bg-surface2 px-2 py-0.5 rounded-lg">{s.time}</span>
+                  )}
                 </div>
               </button>
             ))}
           </div>
-        </div>
-      )}
 
-      {/* Today's log */}
-      <div>
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-          What did you do today?
-        </p>
-        <textarea
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          rows={4}
-          placeholder="Notes, progress, blockers, insights..."
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gray-500 resize-none"
-        />
-        <div className="flex gap-2 mt-2 flex-wrap">
-          <MediaUpload
-            label="📷 Photo"
-            multiple
-            onUploaded={(url) => setPhotoUrls(prev => [...prev, url])}
-          />
-          <input
-            ref={videoInputRef}
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={async (e) => {
-              const file = e.target.files?.[0]
-              if (!file) return
-              setVideoUploading(true)
-              setError('')
-              try {
-                const result = await uploadVideo(file)
-                if (result.url) setVideoUrl(result.url)
-                else throw new Error(result.error || 'Upload failed')
-              } catch (err) {
-                setError(err.message)
-              } finally {
-                setVideoUploading(false)
-                if (videoInputRef.current) videoInputRef.current.value = ''
-              }
-            }}
-          />
-          <button
-            type="button"
-            disabled={videoUploading}
-            onClick={() => videoInputRef.current?.click()}
-            className="text-gray-400 hover:text-white disabled:opacity-50 border border-gray-700 px-3 py-1.5 rounded-lg text-xs"
-          >
-            {videoUploading ? 'Uploading...' : '🎥 Video'}
-          </button>
-          {videoUrl && (
-            <YouTubeEmbed url={videoUrl} onRemove={() => setVideoUrl('')} />
+          {/* Resources */}
+          {(entry.resources || []).length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-gray-600 uppercase tracking-widest mb-2">Resources</p>
+              <div className="flex flex-wrap gap-2">
+                {entry.resources.map((r, i) => (
+                  <div key={i} className="flex items-center gap-1.5 bg-surface border border-border rounded-xl px-3 py-1.5">
+                    <span className="text-xs text-gray-400">{r.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* AI notes */}
+          {entry.ai_notes && (
+            <div className="bg-surface border border-border rounded-2xl p-4">
+              <p className="text-xs font-medium text-gray-600 uppercase tracking-widest mb-1.5">AI Briefing</p>
+              <p className="text-sm text-gray-500 italic leading-relaxed">{entry.ai_notes}</p>
+            </div>
+          )}
+
+          {/* Mark complete */}
+          {!confirmComplete ? (
+            <button
+              onClick={() => setConfirmComplete(true)}
+              className="w-full text-gray-600 hover:text-gray-300 border border-border hover:border-border2 py-3 rounded-2xl text-sm font-medium transition-colors"
+            >
+              Mission Complete →
+            </button>
+          ) : (
+            <div className={`${accentBg} border ${accentBorder} rounded-2xl p-4 space-y-3`}>
+              <p className="text-sm font-semibold text-white">Ready to close this mission?</p>
+              <p className="text-xs text-gray-600">You'll go through a quick AI debrief before the knowledge card is created.</p>
+              <div className="flex gap-2">
+                <button onClick={handleMarkComplete} disabled={saving}
+                  className={`flex-1 ${accent} disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold`}>
+                  {saving ? 'Saving...' : 'Yes, debrief me'}
+                </button>
+                <button onClick={() => setConfirmComplete(false)}
+                  className="flex-1 bg-surface border border-border text-gray-500 hover:text-white py-2.5 rounded-xl text-sm transition-colors">
+                  Not yet
+                </button>
+              </div>
+            </div>
           )}
         </div>
-        {photoUrls.length > 0 && (
-          <div className="flex gap-2 flex-wrap mt-2">
-            {photoUrls.map((url, i) => (
-              <div key={i} className="relative">
-                <img src={url} alt="upload" className="h-16 w-16 object-cover rounded-lg border border-gray-700" />
-                <button
-                  type="button"
-                  onClick={() => setPhotoUrls(prev => prev.filter((_, j) => j !== i))}
-                  className="absolute -top-1 -right-1 bg-gray-900 text-red-400 text-xs rounded-full w-4 h-4 flex items-center justify-center"
-                >✕</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {error && <p className="text-xs text-red-400">{error}</p>}
-
-      <button
-        onClick={handleLogToday}
-        disabled={saving || !notes.trim()}
-        className={`w-full ${accent} disabled:opacity-40 text-white px-4 py-2.5 rounded-lg text-sm font-medium`}
-      >
-        {saving ? 'Saving...' : 'Log Today →'}
-      </button>
-
-      {/* Past logs */}
-      {logs.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Past Logs</p>
-          <div className="space-y-2">
-            {logs.map(log => (
-              <div key={log.id} className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
-                <button
-                  onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-left"
-                >
-                  <span className="text-xs text-gray-400">{log.date}</span>
-                  <span className="text-xs text-gray-600">{expandedLog === log.id ? '▲' : '▼'}</span>
-                </button>
-                {expandedLog === log.id && (
-                  <div className="px-4 pb-3 border-t border-gray-700">
-                    <p className="text-sm text-gray-300 mt-2">{log.notes}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
       )}
 
-      {/* Mark complete */}
-      {!confirmComplete ? (
-        <button
-          onClick={() => setConfirmComplete(true)}
-          className="w-full text-gray-400 hover:text-white border border-gray-700 px-4 py-2.5 rounded-lg text-sm"
-        >
-          Mark Complete →
-        </button>
-      ) : (
-        <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 space-y-3">
-          <p className="text-sm text-white">Mark this mission as complete?</p>
-          <p className="text-xs text-gray-500">You'll move to the assessment phase next session.</p>
-          <div className="flex gap-2">
-            <button
-              onClick={handleMarkComplete}
-              disabled={saving}
-              className={`flex-1 ${accent} disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium`}
-            >
-              {saving ? 'Saving...' : 'Yes, complete'}
-            </button>
-            <button
-              onClick={() => setConfirmComplete(false)}
-              className="flex-1 text-gray-400 hover:text-white border border-gray-700 px-4 py-2 rounded-lg text-sm"
-            >
-              Not yet
-            </button>
+      {/* Log section */}
+      {activeSection === 'log' && (
+        <div className="space-y-4 animate-fade-in">
+
+          {/* Today's entry */}
+          <div className="bg-surface border border-border rounded-2xl p-4 space-y-3">
+            <p className="text-xs font-medium text-gray-600 uppercase tracking-widest">What did you do today?</p>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              rows={5}
+              placeholder="Progress made, blockers hit, things learned, next steps..."
+              className="w-full bg-base border border-border rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-700 focus:outline-none focus:border-border2 resize-none leading-relaxed"
+            />
+
+            {/* Photo thumbnails */}
+            {photoUrls.length > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                {photoUrls.map((url, i) => (
+                  <div key={i} className="relative">
+                    <img src={url} alt="upload" className="h-16 w-16 object-cover rounded-xl border border-border" />
+                    <button type="button"
+                      onClick={() => setPhotoUrls(prev => prev.filter((_, j) => j !== i))}
+                      className="absolute -top-1 -right-1 bg-base text-red-400 text-xs rounded-full w-4 h-4 flex items-center justify-center border border-border">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Video embed */}
+            {videoUrl && <YouTubeEmbed url={videoUrl} onRemove={() => setVideoUrl('')} />}
+
+            {/* Media buttons */}
+            <div className="flex gap-2 flex-wrap">
+              <MediaUpload label="📷 Photo" multiple onUploaded={url => setPhotoUrls(prev => [...prev, url])} />
+              <input ref={videoInputRef} type="file" accept="video/*" className="hidden"
+                onChange={async e => {
+                  const file = e.target.files?.[0]; if (!file) return
+                  setVideoUploading(true); setError('')
+                  try {
+                    const result = await uploadVideo(file)
+                    if (result.url) setVideoUrl(result.url)
+                    else throw new Error(result.error || 'Upload failed')
+                  } catch (err) { setError(err.message) }
+                  finally { setVideoUploading(false); if (videoInputRef.current) videoInputRef.current.value = '' }
+                }} />
+              <button type="button" disabled={videoUploading}
+                onClick={() => videoInputRef.current?.click()}
+                className="text-gray-600 hover:text-gray-300 disabled:opacity-50 border border-border px-3 py-1.5 rounded-xl text-xs transition-colors">
+                {videoUploading ? 'Uploading...' : '🎥 Video'}
+              </button>
+            </div>
           </div>
+
+          {error && <p className="text-xs text-red-400">{error}</p>}
+
+          <button onClick={handleLogToday} disabled={saving || !notes.trim()}
+            className={`w-full ${accent} disabled:opacity-30 text-white py-3.5 rounded-2xl text-sm font-bold transition-all`}>
+            {saving ? 'Saving...' : 'Log Session →'}
+          </button>
+
+          {/* Past logs */}
+          {logs.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-gray-600 uppercase tracking-widest mb-2.5">Session History</p>
+              <div className="space-y-2">
+                {logs.map(log => (
+                  <div key={log.id} className="bg-surface border border-border rounded-2xl overflow-hidden">
+                    <button
+                      onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-1 h-1 rounded-full ${accentFill}`} />
+                        <span className="text-xs text-gray-500">{log.date}</span>
+                        {log.notes && (
+                          <span className="text-xs text-gray-700 truncate max-w-[160px]">{log.notes.slice(0, 40)}...</span>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-700">{expandedLog === log.id ? '▲' : '▼'}</span>
+                    </button>
+                    {expandedLog === log.id && (
+                      <div className="px-4 pb-4 border-t border-border space-y-3">
+                        <p className="text-sm text-gray-300 mt-3 leading-relaxed">{log.notes}</p>
+                        {(log.photo_urls || []).length > 0 && (
+                          <div className="flex gap-2 flex-wrap">
+                            {log.photo_urls.map((url, i) => (
+                              <img key={i} src={url} alt="" className="h-20 w-20 object-cover rounded-xl border border-border" />
+                            ))}
+                          </div>
+                        )}
+                        {log.video_url && <YouTubeEmbed url={log.video_url} />}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
