@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { getProgressLogs, saveProgressLog, updateLearningEntry } from '../../api/index'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { getProgressLogs, saveProgressLog, updateLearningEntry, uploadVideo } from '../../api/index'
 import PhaseIndicator from '../shared/PhaseIndicator'
 import MediaUpload from '../shared/MediaUpload'
 
@@ -11,6 +11,9 @@ export default function ProgressPhase({ entry, type, onSaved, onMarkComplete, on
   const [logs, setLogs] = useState([])
   const [notes, setNotes] = useState('')
   const [photoUrls, setPhotoUrls] = useState([])
+  const [videoUrl, setVideoUrl] = useState('')
+  const [videoUploading, setVideoUploading] = useState(false)
+  const videoInputRef = useRef(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [expandedLog, setExpandedLog] = useState(null)
@@ -57,7 +60,7 @@ export default function ProgressPhase({ entry, type, onSaved, onMarkComplete, on
         date: today(),
         notes: notes.trim(),
         photo_urls: photoUrls,
-        video_url: null,
+        video_url: videoUrl || null,
       })
       setNotes('')
       setPhotoUrls([])
@@ -159,13 +162,42 @@ export default function ProgressPhase({ entry, type, onSaved, onMarkComplete, on
             multiple
             onUploaded={(url) => setPhotoUrls(prev => [...prev, url])}
           />
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              setVideoUploading(true)
+              setError('')
+              try {
+                const result = await uploadVideo(file)
+                if (result.url) setVideoUrl(result.url)
+                else throw new Error(result.error || 'Upload failed')
+              } catch (err) {
+                setError(err.message)
+              } finally {
+                setVideoUploading(false)
+                if (videoInputRef.current) videoInputRef.current.value = ''
+              }
+            }}
+          />
           <button
             type="button"
-            className="text-gray-400 hover:text-white border border-gray-700 px-3 py-1.5 rounded-lg text-xs"
-            onClick={() => alert('Video upload coming soon — YouTube not wired yet.')}
+            disabled={videoUploading}
+            onClick={() => videoInputRef.current?.click()}
+            className="text-gray-400 hover:text-white disabled:opacity-50 border border-gray-700 px-3 py-1.5 rounded-lg text-xs"
           >
-            🎥 Video
+            {videoUploading ? 'Uploading...' : '🎥 Video'}
           </button>
+          {videoUrl && (
+            <div className="mt-2 w-full">
+              <a href={videoUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-400 underline break-all">{videoUrl}</a>
+              <button type="button" onClick={() => setVideoUrl('')} className="text-xs text-red-400 ml-2">Remove</button>
+            </div>
+          )}
         </div>
         {photoUrls.length > 0 && (
           <div className="flex gap-2 flex-wrap mt-2">
