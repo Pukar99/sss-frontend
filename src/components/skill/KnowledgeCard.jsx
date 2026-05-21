@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import YouTubeEmbed from '../shared/YouTubeEmbed'
 
 const TABS = [
   { id: 'plan', label: 'Plan' },
@@ -137,11 +138,7 @@ export default function KnowledgeCard({ entry, logs = [], onBack }) {
                   <img key={i} src={url} alt="session" className="w-full rounded-xl border border-gray-700 object-cover" />
                 ))}
                 {log.video_url && (
-                  <a href={log.video_url} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-blue-400 hover:text-blue-300">
-                    <span>▶</span>
-                    <span className="truncate">{log.video_url}</span>
-                  </a>
+                  <YouTubeEmbed url={log.video_url} />
                 )}
               </div>
             ))

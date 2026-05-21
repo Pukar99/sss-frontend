@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { getProgressLogs, saveProgressLog, updateLearningEntry, uploadVideo } from '../../api/index'
 import PhaseIndicator from '../shared/PhaseIndicator'
 import MediaUpload from '../shared/MediaUpload'
+import YouTubeEmbed from '../shared/YouTubeEmbed'
 
 function today() {
   return new Date().toISOString().slice(0, 10)
@@ -193,10 +194,7 @@ export default function ProgressPhase({ entry, type, onSaved, onMarkComplete, on
             {videoUploading ? 'Uploading...' : '🎥 Video'}
           </button>
           {videoUrl && (
-            <div className="mt-2 w-full">
-              <a href={videoUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-400 underline break-all">{videoUrl}</a>
-              <button type="button" onClick={() => setVideoUrl('')} className="text-xs text-red-400 ml-2">Remove</button>
-            </div>
+            <YouTubeEmbed url={videoUrl} onRemove={() => setVideoUrl('')} />
           )}
         </div>
         {photoUrls.length > 0 && (
